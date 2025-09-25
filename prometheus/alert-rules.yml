@@ -1,0 +1,52 @@
+groups:
+  - name: application_alerts
+    interval: 30s
+    rules:
+      # Алерт при отключении базы данных
+      - alert: DatabaseDown
+        expr: database_health_status == 0
+        for: 5s
+        labels:
+          severity: critical
+          service: notes-service
+          component: database
+        annotations:
+          summary: "Database connection lost"
+          description: "The database connection has been down for more than 1 minute. Service: {{ $labels.service }}"
+          
+      # Алерт при недоступности приложения
+      - alert: ApplicationUnavailable
+        expr: up{job="myapp"} == 0
+        for: 5s
+        labels:
+          severity: critical
+          service: notes-service
+          component: application
+        annotations:
+          summary: "Application is not responding"
+          description: "The application is not responding to Prometheus scrapes for more than 2 minutes. The container might be down."
+          
+      # Алерт при большом количестве HTTP предупреждений (4xx)
+      - alert: HighWarningRate
+        expr: increase(http_warnings_total[1m]) > 10
+        for: 10s
+        labels:
+          severity: warning
+          service: notes-service
+          component: application
+        annotations:
+          summary: "High rate of HTTP warnings (4xx)"
+          description: "More than 10 HTTP warnings (4xx responses) occurred in the last minute. Current rate: {{ $value }} warnings/min"
+          
+      # Алерт при HTTP ошибках (5xx)
+      - alert: HTTPErrors
+        expr: increase(http_errors_total[1m]) >= 1
+        for: 10s
+        labels:
+          severity: critical
+          service: notes-service
+          component: application
+        annotations:
+          summary: "HTTP errors detected (5xx)"
+          description: "{{ $value }} HTTP errors (5xx responses) occurred in the last minute. This indicates server-side issues."
+          

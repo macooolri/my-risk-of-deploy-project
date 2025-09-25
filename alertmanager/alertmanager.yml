@@ -1,0 +1,44 @@
+global:
+  resolve_timeout: 5m  # Время, после которого алерт считается разрешенным
+  # SMTP конфигурация для отправки email
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'themashablanco@gmail.com'
+  smtp_auth_username: 'themashablanco@gmail.com'
+  smtp_auth_password: 'place you mail app password'  # Замените на ваш пароль приложения
+  smtp_require_tls: true
+
+# Маршрут для алертов
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s      # Ждать 2 минуты перед отправкой первого алерта
+  group_interval: 1m  # Ждать 5 минут между отправками новых алертов в группе
+  repeat_interval: 1h # Повторять алерт только каждые 4 часа
+  receiver: 'email-notifications'
+
+# Получатели уведомлений
+receivers:
+  - name: 'email-notifications'
+    email_configs:
+      - to: 'masha_230103@mail.ru'
+        headers:
+          Subject: 'Alert: {{ .GroupLabels.alertname }} - {{ .Status }}'
+        html: |
+          <h2>Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><b>Status:</b> {{ .Status }}</p>
+          <p><b>Description:</b> {{ range .Alerts }}{{ .Annotations.description }}{{ end }}</p>
+          <p><b>Summary:</b> {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}</p>
+          <p><b>Time:</b> {{ .Alerts.StartsAt }}</p>
+          <h3>Labels:</h3>
+          <ul>
+          {{ range .GroupLabels.SortedPairs }}
+            <li><b>{{ .Name }}:</b> {{ .Value }}</li>
+          {{ end }}
+          </ul>
+
+# Подавление дубликатов
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']

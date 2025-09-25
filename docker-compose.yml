@@ -1,0 +1,96 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - db
+    environment:
+      db_user: "NotesDBUser"
+      db_pass: "NotesDBPassword"
+      db_name: "NotesDB"
+      db_host: "database_host"
+      db_port: "5432"
+    networks:
+      - my_network
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  db:
+    image: postgres:latest
+    hostname: "database_host"
+    environment: 
+      POSTGRES_DB: "NotesDB"
+      POSTGRES_USER: "NotesDBUser"
+      POSTGRES_PASSWORD: "NotesDBPassword"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    restart: always
+    expose: 
+      - "5432"
+    volumes: 
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - my_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"         # экспонируем веб-интерфейс Prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro  # монтируем конфиг
+      - ./prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro  # монтируем правила алертов
+    depends_on:
+      - app
+    networks:
+      - my_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_DEFAULT_THEME=light
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - my_network
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - my_network
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    depends_on:
+      - prometheus
+    networks:
+      - my_network
+
+volumes:
+  postgres_data:
+  grafana-data:
+  alertmanager-data:
+
+networks:
+  my_network:

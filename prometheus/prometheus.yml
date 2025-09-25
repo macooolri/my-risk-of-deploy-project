@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s        # частота опроса (по умолчанию 1 раз в 15 секунд)
+  evaluation_interval: 15s    # частота проверки правил алертов
+
+# Конфигурация Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+# Загружаем правила алертинга
+rule_files:
+  - "/etc/prometheus/alert-rules.yml"
+
+scrape_configs:
+  - job_name: "myapp"         # имя задания (произвольное)
+    static_configs:
+      - targets: ["app:8080"] # адрес(а) сервисов для сбора метрик
+  
+  - job_name: "node"          # джоба для сбора системных метрик
+    static_configs:
+      - targets: ["node-exporter:9100"] # адрес node-exporter
